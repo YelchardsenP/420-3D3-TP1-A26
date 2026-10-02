@@ -7,15 +7,37 @@ class GestionStocks(Sujet):
     
     def __init__(self):
         super().__init__()
-        pass
+
+        self.titres = {}
+        
+        self.prix_actuels = {}
+
+        self._ajouter_titres_initiaux()
     
+
+    def _ajouter_titres_initiaux(self):
+        self.titres = {
+            "AAPL": {
+            "quantite": 10,
+            "seuil_haut": 250,
+            "seuil_bas": 150,
+        },
+        "MSFT": {
+            "quantite": 5,
+            "seuil_haut": 500,
+            "seuil_bas": 300,
+        },
+    }
+
+
     def ajouter_titre(self):
-        """Valide le formulaire d'ajout, vérifie que le ticker existe via yfinance,
-        puis l'insère dans TITRES et dans l'UI (ligne de prix + liste)."""
+        """Valide et ajoute un titre au portefeuille,
+            puis notifie les observateurs."""
         ticker = self.entry_ticker.get().strip().upper()
+        
         if not ticker:
             return
-        if ticker in TITRES:
+        if ticker in self.titres:
             self._statut(f"{ticker} est déjà dans le portfolio.", "orange")
             return
 
@@ -29,12 +51,14 @@ class GestionStocks(Sujet):
         # calcule plus bas à ±20% du prix actuel une fois celui-ci connu.
         texte_bas = self.entry_seuil_bas_ajout.get().strip()
         texte_haut = self.entry_seuil_haut_ajout.get().strip()
+        
         try:
             seuil_bas = flottant_positif(texte_bas) if texte_bas else None
             seuil_haut = flottant_positif(texte_haut) if texte_haut else None
         except ValueError:
             self._statut("Les alertes doivent être des nombres positifs.", "red")
             return
+        
         if seuil_bas is not None and seuil_haut is not None and seuil_bas >= seuil_haut:
             self._statut("L'alerte basse doit être inférieure à l'alerte haute.", "red")
             return
@@ -46,49 +70,32 @@ class GestionStocks(Sujet):
             self._statut(f"Le titre '{ticker}' n'existe pas.", "red")
             return
 
-        TITRES[ticker] = {
+        self.titres[ticker] = {
             "quantite": quantite,
             "seuil_haut": round(seuil_haut if seuil_haut is not None else prix * 1.2, 2),
             "seuil_bas": round(seuil_bas if seuil_bas is not None else prix * 0.8, 2),
         }
 
-        # Mise à jour de l'UI : nouvelle ligne de prix, nouvelle entrée dans la
-        # liste, puis réinitialisation du formulaire d'ajout
-        self._creer_ligne_prix(ticker)
-        self.listbox_titres.insert(tk.END, self._texte_listbox(ticker))
-        for entry, valeur in (
-            (self.entry_ticker, ""), (self.entry_quantite, "1"),
-            (self.entry_seuil_bas_ajout, ""), (self.entry_seuil_haut_ajout, ""),
-        ):
-            entry.delete(0, tk.END)
-            entry.insert(0, valeur)
+        self.notifier()
 
-        # Affiche le prix tout de suite plutôt que d'attendre le prochain
-        # cycle de rafraîchir() (jusqu'à INTERVALLE_MS plus tard)
-        texte, couleur = formater_prix(prix, ouverture)
-        self.labels_prix[ticker].config(text=texte, fg=couleur)
-        self._statut(f"{ticker} ajouté au portfolio ({quantite} action(s)).", "green")
-    
+       
     def retirer_titre(self):
-        """Retire le titre sélectionné dans la liste : du portefeuille (TITRES),
-        de la liste, et détruit sa ligne de prix."""
+        """Retire le titre sélectionné du portefeuille et notifie les observateurs."""
         selectionne = self._ticker_selectionne()
         if selectionne is None:
             self._statut("Sélectionnez un titre à retirer.", "orange")
             return
-        index, ticker = selectionne
+        _, ticker = selectionne
 
-        self.listbox_titres.delete(index)
-        del TITRES[ticker]
-        self.labels_prix.pop(ticker, None)
-        self.frames_prix.pop(ticker).destroy()
+        #supression de la ligne
+        del self.titres[ticker]
 
-        self._statut(f"{ticker} retiré du portfolio.", "gray")
+        self.notifier()
+        
     
     def modifier_titre(self) -> None:
-        """Modifie la quantité et/ou les seuils du titre sélectionné dans la liste.
-        Vérifie que le ticker existe, que les nouvelles valeurs sont valides, puis
-        met à jour TITRES et l'affichage de la liste."""
+        """Modifie la quantité et les seuils du titre sélectionné,
+            puis notifie les observateurs."""
         selectionne = self._ticker_selectionne()
         if selectionne is None:
             self._statut("Sélectionnez un titre à modifier.", "orange")
@@ -114,61 +121,42 @@ class GestionStocks(Sujet):
             return
 
         # Mise à jour des données du titre dans TITRES
-        titre_info = TITRES[ticker]
+        titre_info = self.titres[ticker]
         titre_info["quantite"] = quantite
         if seuil_bas is not None:
             titre_info["seuil_bas"] = seuil_bas
         if seuil_haut is not None:
             titre_info["seuil_haut"] = seuil_haut
 
-        # Mise à jour de l'affichage de la liste
-        self.listbox_titres.delete(index)
-        self.listbox_titres.insert(index, self._texte_listbox(ticker))
-        self.listbox_titres.selection_set(index)
-
-        self._statut(f"{ticker} modifié : {quantite} action(s), "
-                     f"seuils {titre_info['seuil_bas']} / {titre_info['seuil_haut']}.", "green")
+        self.notifier()
         
     
     def rafraichir_prix(self) -> None:
-        """Cycle principal : récupère les prix de tous les titres, met à jour
-        l'affichage de ceux-ci"""
-        try:
-            # 1. Récupération des prix actuels pour tous les titres du portefeuille
-            prix_actuels = {ticker: recuperer_prix(ticker) for ticker in TITRES}
+        """Récupère les prix actuels et notifie les observateurs."""
 
-            # 2. Mise à jour de l'affichage prix/variation de chaque titre
-            for ticker, (prix, ouverture) in prix_actuels.items():
-                texte, couleur = formater_prix(prix, ouverture)
-                self.labels_prix[ticker].config(text=texte, fg=couleur)
+        self.prix_actuels = {
+            ticker: recuperer_prix(ticker)
+            for ticker in self.titres
+        }
 
-            # 3. Valeur totale du portefeuille et variation depuis l'ouverture
-            valeur_totale = sum(prix * TITRES[t]["quantite"] for t, (prix, _) in prix_actuels.items())
-            valeur_ouverture = sum(ouv * TITRES[t]["quantite"] for t, (_, ouv) in prix_actuels.items())
-            variation_portfolio = valeur_totale - valeur_ouverture
+        self.notifier()
 
-            self.label_valeur.config(text=f"Valeur totale : {valeur_totale:.2f} $")
-            symbole = "▲" if variation_portfolio >= 0 else "▼"
-            self.label_variation.config(
-                text=f"{symbole} {abs(variation_portfolio):.2f} $ depuis l'ouverture",
-                fg="green" if variation_portfolio >= 0 else "red",
-            )
+
+            
     
     def get_donnees(self) -> dict:
-        donnees = {
+        return {
             "titres": {
-                ticker: {
+            ticker: {
                     "quantite": info["quantite"],
                     "seuil_haut": info["seuil_haut"],
                     "seuil_bas": info["seuil_bas"],
                 }
-                for ticker, info in TITRES.items()
+                for ticker, info in self.titres.items()
             },
-            "prix_actuels": {
-                ticker: self.labels_prix[ticker].cget("text")
-                for ticker in TITRES
-            },
+            "prix_actuels": self.prix_actuels,
         }
+
 
 
 # ajouter_titre()
