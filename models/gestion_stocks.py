@@ -2,14 +2,12 @@ from models.subject import Sujet
 import yfinance as yf
 
 
-
 class GestionStocks(Sujet):
     
     def __init__(self):
         super().__init__()
 
         self.titres = {}
-        
         self.prix_actuels = {}
 
         self._ajouter_titres_initiaux()
@@ -17,145 +15,133 @@ class GestionStocks(Sujet):
 
     def _ajouter_titres_initiaux(self):
         self.titres = {
-            "AAPL": {
-            "quantite": 10,
-            "seuil_haut": 250,
-            "seuil_bas": 150,
-        },
-        "MSFT": {
-            "quantite": 5,
-            "seuil_haut": 500,
-            "seuil_bas": 300,
-        },
-    }
+            "AAPL": {"quantite": 10, "seuil_haut": 250, "seuil_bas": 150},
+            "MSFT": {"quantite": 5, "seuil_haut": 500, "seuil_bas": 300}
+        }
+
+    def recuperer_prix(self, ticker):
+        info = yf.Ticker(ticker).fast_info
+        prix = info.get("last_price")
+        ouverture = info.get("open")
+
+        if prix is None:
+            raise ValueError(f"Le titre '{ticker}' n'existe pas.")
+
+        return prix, ouverture
+
+    def entier_positif(self, texte):
+        valeur = int(texte)
+        if valeur <= 0:
+            raise ValueError
+        return valeur
+
+    def flottant_positif(self, texte):
+        valeur = float(texte)
+        if valeur <= 0:
+            raise ValueError
+        return valeur
 
 
-    def ajouter_titre(self):
-        """Valide et ajoute un titre au portefeuille,
-            puis notifie les observateurs."""
-        ticker = self.entry_ticker.get().strip().upper()
-        
-        if not ticker:
-            return
+    def ajouter_titre(self, ticker, quantite, seuil_bas=None, seuil_haut=None):
+
+        ticker = ticker.upper()
+
         if ticker in self.titres:
-            self._statut(f"{ticker} est déjà dans le portfolio.", "orange")
-            return
+            raise ValueError(f"{ticker} est déjà dans le portefeuille.")
 
-        try:
-            quantite = entier_positif(self.entry_quantite.get().strip())
-        except ValueError:
-            self._statut("La quantité doit être un nombre entier positif.", "red")
-            return
+        quantite = self.entier_positif(quantite)
 
-        # Les seuils sont optionnels à l'ajout : s'ils sont vides, on les
-        # calcule plus bas à ±20% du prix actuel une fois celui-ci connu.
-        texte_bas = self.entry_seuil_bas_ajout.get().strip()
-        texte_haut = self.entry_seuil_haut_ajout.get().strip()
-        
-        try:
-            seuil_bas = flottant_positif(texte_bas) if texte_bas else None
-            seuil_haut = flottant_positif(texte_haut) if texte_haut else None
-        except ValueError:
-            self._statut("Les alertes doivent être des nombres positifs.", "red")
-            return
-        
+        if seuil_bas is not None:
+            seuil_bas = self.flottant_positif(seuil_bas)
+        if seuil_haut is not None:
+            seuil_haut = self.flottant_positif(seuil_haut)
+
         if seuil_bas is not None and seuil_haut is not None and seuil_bas >= seuil_haut:
-            self._statut("L'alerte basse doit être inférieure à l'alerte haute.", "red")
-            return
+            raise ValueError("Le seuil bas doit être inférieur au seuil haut.")
 
-        # Le ticker n'existe vraiment que si yfinance renvoie un prix
-        try:
-            prix, ouverture = recuperer_prix(ticker)
-        except Exception:
-            self._statut(f"Le titre '{ticker}' n'existe pas.", "red")
-            return
+        prix, ouverture = self.recuperer_prix(ticker)
 
         self.titres[ticker] = {
             "quantite": quantite,
-            "seuil_haut": round(seuil_haut if seuil_haut is not None else prix * 1.2, 2),
-            "seuil_bas": round(seuil_bas if seuil_bas is not None else prix * 0.8, 2),
+            "seuil_haut": round(seuil_haut if seuil_haut else prix * 1.2, 2),
+            "seuil_bas": round(seuil_bas if seuil_bas else prix * 0.8, 2),
         }
+        
 
         self.notifier()
 
-       
-    def retirer_titre(self):
-        """Retire le titre sélectionné du portefeuille et notifie les observateurs."""
-        selectionne = self._ticker_selectionne()
-        if selectionne is None:
-            self._statut("Sélectionnez un titre à retirer.", "orange")
-            return
-        _, ticker = selectionne
 
-        #supression de la ligne
+    def retirer_titre(self, ticker):
+        ticker = ticker.upper()
+
+        if ticker not in self.titres:
+            raise ValueError(f"{ticker} n'est pas dans le portefeuille.")
+
         del self.titres[ticker]
-
+        
         self.notifier()
         
-    
-    def modifier_titre(self) -> None:
-        """Modifie la quantité et les seuils du titre sélectionné,
-            puis notifie les observateurs."""
-        selectionne = self._ticker_selectionne()
-        if selectionne is None:
-            self._statut("Sélectionnez un titre à modifier.", "orange")
-            return
-        index, ticker = selectionne
 
-        try:
-            quantite = entier_positif(self.entry_quantite.get().strip())
-        except ValueError:
-            self._statut("La quantité doit être un nombre entier positif.", "red")
-            return
+    def modifier_titre(self, ticker, quantite=None, seuil_bas=None, seuil_haut=None):
 
-        texte_bas = self.entry_seuil_bas_modif.get().strip()
-        texte_haut = self.entry_seuil_haut_modif.get().strip()
-        try:
-            seuil_bas = flottant_positif(texte_bas) if texte_bas else None
-            seuil_haut = flottant_positif(texte_haut) if texte_haut else None
-        except ValueError:
-            self._statut("Les alertes doivent être des nombres positifs.", "red")
-            return
-        if seuil_bas is not None and seuil_haut is not None and seuil_bas >= seuil_haut:
-            self._statut("L'alerte basse doit être inférieure à l'alerte haute.", "red")
-            return
+        ticker = ticker.upper()
 
-        # Mise à jour des données du titre dans TITRES
+        if ticker not in self.titres:
+            raise ValueError(f"{ticker} n'existe pas.")
+
         titre_info = self.titres[ticker]
-        titre_info["quantite"] = quantite
+
+        if quantite is not None:
+            titre_info["quantite"] = self.entier_positif(quantite)
+
         if seuil_bas is not None:
-            titre_info["seuil_bas"] = seuil_bas
+            titre_info["seuil_bas"] = self.flottant_positif(seuil_bas)
+
         if seuil_haut is not None:
-            titre_info["seuil_haut"] = seuil_haut
+            titre_info["seuil_haut"] = self.flottant_positif(seuil_haut)
+
+        if titre_info["seuil_bas"] >= titre_info["seuil_haut"]:
+            raise ValueError("Le seuil bas doit être inférieur au seuil haut.")
 
         self.notifier()
-        
-    
-    def rafraichir_prix(self) -> None:
-        """Récupère les prix actuels et notifie les observateurs."""
 
+
+    def rafraichir_prix(self):
         self.prix_actuels = {
-            ticker: recuperer_prix(ticker)
+            ticker: self.recuperer_prix(ticker)
             for ticker in self.titres
         }
-
         self.notifier()
 
 
-            
-    
-    def get_donnees(self) -> dict:
-        return {
-            "titres": {
+def get_donnees(self):
+
+    donnees = {
+        "titres": {
             ticker: {
-                    "quantite": info["quantite"],
-                    "seuil_haut": info["seuil_haut"],
-                    "seuil_bas": info["seuil_bas"],
-                }
-                for ticker, info in self.titres.items()
-            },
-            "prix_actuels": self.prix_actuels,
+                "quantite": data["quantite"],
+                "seuil_haut": data["seuil_haut"],
+                "seuil_bas": data["seuil_bas"],
+            }
+            for ticker, data in self.titres.items()
+        },
+
+        # prix actuels seulement
+        "prix_actuels": {
+            ticker: prix[0]   # prix actuel
+            for ticker, prix in self.prix_actuels.items()
+        },
+
+        # prix d’ouverture séparés
+        "prix_ouverture": {
+            ticker: prix[1]   # prix ouverture
+            for ticker, prix in self.prix_actuels.items()
         }
+    }
+    
+    return donnees
+
+
 
 
 
