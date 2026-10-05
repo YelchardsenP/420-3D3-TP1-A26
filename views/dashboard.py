@@ -37,7 +37,15 @@ class Dashboard(tk.Tk):
         self._cycle_actualisation()  # Démarrer le cycle d'actualisation
         
         
-
+    def _champ(self, parent, texte, width, valeur_defaut=""):
+        """Ajoute un couple Label + Entry à `parent` et retourne l'Entry."""
+        tk.Label(parent, text=f"{texte}:").pack(side=tk.LEFT)
+        entry = tk.Entry(parent, width=width)
+        if valeur_defaut:
+            entry.insert(0, valeur_defaut)
+        entry.pack(side=tk.LEFT, padx=(2, 8))
+        return entry
+    
     def _creer_widgets(self):
         # Création des widgets de l'interface
         
@@ -82,44 +90,42 @@ class Dashboard(tk.Tk):
         # Contenu de Frame pour la gestion des titres
         #========================
 
-        # Champs pour ajouter un titre
-        self.entry_ticker = tk.Entry(self.frame_gestion, width=10)
-        self.entry_ticker.pack(anchor="w")
+        # Ligne d'ajout
+        ligne_ajout = tk.Frame(self.frame_gestion)
+        ligne_ajout.pack(fill=tk.X)
 
-        self.entry_quantite = tk.Entry(self.frame_gestion, width=10)
-        self.entry_quantite.pack(anchor="w")
+        self.entry_ticker = self._champ(ligne_ajout, "Ticker", width=8)
+        self.entry_quantite = self._champ(ligne_ajout, "Qté", width=5, valeur_defaut="1")
+        self.entry_seuil_bas = self._champ(ligne_ajout, "Alerte basse", width=7)
+        self.entry_seuil_haut = self._champ(ligne_ajout, "Alerte haute", width=7)
 
-        self.entry_seuil_bas = tk.Entry(self.frame_gestion, width=10)
-        self.entry_seuil_bas.pack(anchor="w")
+        tk.Button(ligne_ajout, text="Ajouter", command=self._action_ajouter).pack(side=tk.LEFT)
 
-        self.entry_seuil_haut = tk.Entry(self.frame_gestion, width=10)
-        self.entry_seuil_haut.pack(anchor="w")
+        #Note pour utilisateur
+        tk.Label(
+                    self.frame_gestion,
+                    text="(Alertes optionnelles : si vides, calculées à ±20% du prix actuel)",
+                    font=("Segoe UI", 8), fg="gray"
+                ).pack(anchor="w", pady=(2, 5))
 
-        # Bouton ajouter
-        self.btn_ajouter = tk.Button(self.frame_gestion, text="Ajouter", command=self._action_ajouter)
-        self.btn_ajouter.pack(anchor="w", pady=5)
+       # Emplacement réservé pour la Listbox (créée par l'observer)
+        self.frame_liste = tk.Frame(self.frame_gestion)
+        self.frame_liste.pack(fill=tk.X)
 
-        # Listbox des titres
-        self.listbox_titres = tk.Listbox(self.frame_gestion, height=5)
-        self.listbox_titres.pack(fill=tk.X)
+        
+        # Ligne de modification
 
-        # Bouton retirer
-        self.btn_retirer = tk.Button(self.frame_gestion, text="Retirer", command=self._action_retirer)
-        self.btn_retirer.pack(anchor="w", pady=5)
+        ligne_modif = tk.Frame(self.frame_gestion)
+        ligne_modif.pack(fill=tk.X, pady=(8, 0))
 
-        # Champs pour modifier
-        self.entry_nouvelle_quantite = tk.Entry(self.frame_gestion, width=10)
-        self.entry_nouvelle_quantite.pack(anchor="w")
+        tk.Label(ligne_modif, text="Sélection →").pack(side=tk.LEFT)
 
-        self.entry_nouveau_seuil_bas = tk.Entry(self.frame_gestion, width=10)
-        self.entry_nouveau_seuil_bas.pack(anchor="w")
+        self.entry_nouvelle_quantite = self._champ(ligne_modif, "Qté", width=5)
+        self.entry_nouveau_seuil_bas = self._champ(ligne_modif, "Alerte basse", width=7)
+        self.entry_nouveau_seuil_haut = self._champ(ligne_modif, "Alerte haute", width=7)
 
-        self.entry_nouveau_seuil_haut = tk.Entry(self.frame_gestion, width=10)
-        self.entry_nouveau_seuil_haut.pack(anchor="w")
+        tk.Button(ligne_modif, text="Modifier", command=self._action_modifier).pack(side=tk.LEFT)
 
-        # Bouton modifier
-        self.btn_modifier = tk.Button(self.frame_gestion, text="Modifier", command=self._action_modifier)
-        self.btn_modifier.pack(anchor="w", pady=5)
 
 
         #========================
@@ -146,7 +152,7 @@ class Dashboard(tk.Tk):
         # Initiation des observateurs
         self._affichage_alerte = AffichageAlertes(self.frame_alertes)
         self._affichage_date_update = AffichageDateUpdate(self.frame_date)
-        self._liste_titres = ListeTitres(self.frame_gestion)
+        self._liste_titres = ListeTitres(self.frame_liste)
         self._logger = Logger("portfolio.csv")
         self._prix_live = PrixLive(self.frame_prix)
         self._valeur_totale = ValeurTotale(self.frame_portfolio)
