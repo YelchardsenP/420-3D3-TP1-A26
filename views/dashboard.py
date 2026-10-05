@@ -112,6 +112,10 @@ class Dashboard(tk.Tk):
         self.frame_liste = tk.Frame(self.frame_gestion)
         self.frame_liste.pack(fill=tk.X)
 
+        #Bouton de suppression
+        tk.Button(self.frame_liste, text="Retirer", command=self._action_retirer).pack(side=tk.RIGHT, padx= 5, pady=5, anchor="n")
+        
+
         
         # Ligne de modification
 
@@ -124,7 +128,7 @@ class Dashboard(tk.Tk):
         self.entry_nouveau_seuil_bas = self._champ(ligne_modif, "Alerte basse", width=7)
         self.entry_nouveau_seuil_haut = self._champ(ligne_modif, "Alerte haute", width=7)
 
-        tk.Button(ligne_modif, text="Modifier", command=self._action_modifier).pack(side=tk.LEFT)
+        tk.Button(ligne_modif, text="Modifier sélection", command=self._action_modifier).pack(side=tk.LEFT)
 
 
 
