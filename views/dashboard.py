@@ -17,7 +17,7 @@ POLICE_TITRE = ("Segoe UI", 16, "bold")
 
 class Dashboard(tk.Tk):
 
-    INTERVALLE_ACTUALISATION = 3000  # Intervalle d'actualisation en millisecondes
+    INTERVALLE_ACTUALISATION = 30000  # Intervalle d'actualisation de 30 secondes
 
     def __init__(self, gestion_stocks: GestionStocks):
         super().__init__()
