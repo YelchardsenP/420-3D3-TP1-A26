@@ -2,61 +2,36 @@ import tkinter as tk
 from observers.observer import Observateur
 
 
-class AffichageAlertes(Observateur):
+class ListeTitres(Observateur):
 
     def __init__(self, parent):
-        self._label = tk.Label(
+        self._listbox = tk.Listbox(
             parent,
-            text="Aucune alerte",
-            fg="gray",
-            justify=tk.LEFT,
-            wraplength=380
+            height=4,
+            exportselection=False
         )
 
-        self._label.pack(anchor="w")
+        self._listbox.pack(
+            fill=tk.X,
+            expand=True
+        )
 
     def actualiser(self, sujet) -> None:
+        self._listbox.delete(0, tk.END)
 
-        donnees = sujet.get_donnees()
+        for ticker, infos in sujet._titres.items():
 
-        titres = donnees["titres"]
-        prix_actuels = donnees["prix_actuels"]
-
-        alertes = []
-
-        for ticker in titres:
-
-            prix = prix_actuels[ticker]
-
-            seuil_bas = titres[ticker]["seuil_bas"]
-            seuil_haut = titres[ticker]["seuil_haut"]
-
-            if prix >= seuil_haut:
-
-                alertes.append(
-                    f"⚠️ {ticker} dépasse le seuil haut "
-                    f"({prix:.2f} $ ≥ {seuil_haut:.2f} $)"
-                )
-
-            elif prix <= seuil_bas:
-
-                alertes.append(
-                    f"⚠️ {ticker} sous le seuil bas "
-                    f"({prix:.2f} $ ≤ {seuil_bas:.2f} $)"
-                )
-
-        if alertes:
-
-            self._label.config(
-                text="\n".join(alertes),
-                fg="red"
+            texte = (
+                f"{ticker} — "
+                f"{infos['quantite']} action(s) "
+                f"(alerte : "
+                f"{infos['seuil_bas']:.2f} $ / "
+                f"{infos['seuil_haut']:.2f} $)"
             )
 
-        else:
-
-            self._label.config(
-                text="Aucune alerte",
-                fg="gray"
+            self._listbox.insert(
+                tk.END,
+                texte
             )
 
 # ListeTitres.actualiser()
