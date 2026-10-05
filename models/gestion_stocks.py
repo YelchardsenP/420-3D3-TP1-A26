@@ -1,4 +1,4 @@
-from models.subject import Sujet
+from subject import Sujet
 import yfinance as yf
 
 
@@ -12,15 +12,15 @@ class GestionStocks(Sujet):
 
         self._ajouter_titres_initiaux()
     
-
     def _ajouter_titres_initiaux(self):
         self.titres = {
             "AAPL": {"quantite": 10, "seuil_haut": 250, "seuil_bas": 150},
             "MSFT": {"quantite": 5, "seuil_haut": 500, "seuil_bas": 300}
         }
 
-    def recuperer_prix(self, ticker):
-        info = yf.Ticker(ticker).fast_info
+    # Recuperation des prix
+    def _recuperer_prix(self, ticker):
+        info = yf.Ticker(ticker).fast_info or {}
         prix = info.get("last_price")
         ouverture = info.get("open")
 
@@ -29,13 +29,14 @@ class GestionStocks(Sujet):
 
         return prix, ouverture
 
-    def entier_positif(self, texte):
+    # Methodes privées pour modifer texte en entier ou flottant positif
+    def _entier_positif(self, texte):
         valeur = int(texte)
         if valeur <= 0:
             raise ValueError
         return valeur
 
-    def flottant_positif(self, texte):
+    def _flottant_positif(self, texte):
         valeur = float(texte)
         if valeur <= 0:
             raise ValueError
@@ -44,23 +45,34 @@ class GestionStocks(Sujet):
 
     def ajouter_titre(self, ticker, quantite, seuil_bas=None, seuil_haut=None):
 
+        # defintion ticket
         ticker = ticker.upper()
 
         if ticker in self.titres:
             raise ValueError(f"{ticker} est déjà dans le portefeuille.")
 
-        quantite = self.entier_positif(quantite)
+        quantite = self._entier_positif(quantite)
 
-        if seuil_bas is not None:
-            seuil_bas = self.flottant_positif(seuil_bas)
-        if seuil_haut is not None:
-            seuil_haut = self.flottant_positif(seuil_haut)
+        # Validation des seuils
+        if seuil_bas in ("", None):
+            seuil_bas = None
+        else:
+            seuil_bas = self._flottant_positif(seuil_bas)
+
+        if seuil_haut in ("", None):
+            seuil_haut = None
+        else:
+            seuil_haut = self._flottant_positif(seuil_haut)
 
         if seuil_bas is not None and seuil_haut is not None and seuil_bas >= seuil_haut:
             raise ValueError("Le seuil bas doit être inférieur au seuil haut.")
 
-        prix, ouverture = self.recuperer_prix(ticker)
+        
 
+        # Récupération du prix actuel et du prix d'ouverture
+        prix, ouverture = self._recuperer_prix(ticker)
+
+        # Ajout du titre au portefeuille avec les seuils par défaut si non fournis
         self.titres[ticker] = {
             "quantite": quantite,
             "seuil_haut": round(seuil_haut if seuil_haut else prix * 1.2, 2),
@@ -72,11 +84,14 @@ class GestionStocks(Sujet):
 
 
     def retirer_titre(self, ticker):
+
+        # defintion ticket
         ticker = ticker.upper()
 
         if ticker not in self.titres:
             raise ValueError(f"{ticker} n'est pas dans le portefeuille.")
 
+        # Suppression du titre et de ses prix
         del self.titres[ticker]
         
         self.notifier()
@@ -84,21 +99,24 @@ class GestionStocks(Sujet):
 
     def modifier_titre(self, ticker, quantite=None, seuil_bas=None, seuil_haut=None):
 
+        # defintion ticket
         ticker = ticker.upper()
 
         if ticker not in self.titres:
             raise ValueError(f"{ticker} n'existe pas.")
 
+        
         titre_info = self.titres[ticker]
 
+        # Validation des nouvelles valeurs
         if quantite is not None:
-            titre_info["quantite"] = self.entier_positif(quantite)
+            titre_info["quantite"] = self._entier_positif(quantite)
 
         if seuil_bas is not None:
-            titre_info["seuil_bas"] = self.flottant_positif(seuil_bas)
+            titre_info["seuil_bas"] = self._flottant_positif(seuil_bas)
 
         if seuil_haut is not None:
-            titre_info["seuil_haut"] = self.flottant_positif(seuil_haut)
+            titre_info["seuil_haut"] = self._flottant_positif(seuil_haut)
 
         if titre_info["seuil_bas"] >= titre_info["seuil_haut"]:
             raise ValueError("Le seuil bas doit être inférieur au seuil haut.")
@@ -107,39 +125,43 @@ class GestionStocks(Sujet):
 
 
     def rafraichir_prix(self):
+
+        # Récupération des prix actuels pour tous les titres
         self.prix_actuels = {
-            ticker: self.recuperer_prix(ticker)
+            ticker: self._recuperer_prix(ticker)
             for ticker in self.titres
         }
         self.notifier()
 
 
-def get_donnees(self):
+    def get_donnees(self):
 
-    donnees = {
-        "titres": {
-            ticker: {
-                "quantite": data["quantite"],
-                "seuil_haut": data["seuil_haut"],
-                "seuil_bas": data["seuil_bas"],
+        # Construction du dictionnaire de données à retourner
+        donnees = {
+            ## Titres avec leurs quantités et seuils
+            "titres": {
+                ticker: {
+                    "quantite": data["quantite"],
+                    "seuil_haut": data["seuil_haut"],
+                    "seuil_bas": data["seuil_bas"],
+                }
+                for ticker, data in self.titres.items()
+            },
+
+            # prix actuels
+            "prix_actuels": {
+                ticker: prix[0]   # prix actuel
+                for ticker, prix in self.prix_actuels.items()
+            },
+
+            # prix d’ouverture
+            "prix_ouverture": {
+                ticker: prix[1]   # prix ouverture
+                for ticker, prix in self.prix_actuels.items()
             }
-            for ticker, data in self.titres.items()
-        },
-
-        # prix actuels seulement
-        "prix_actuels": {
-            ticker: prix[0]   # prix actuel
-            for ticker, prix in self.prix_actuels.items()
-        },
-
-        # prix d’ouverture séparés
-        "prix_ouverture": {
-            ticker: prix[1]   # prix ouverture
-            for ticker, prix in self.prix_actuels.items()
         }
-    }
     
-    return donnees
+        return donnees
 
 
 
