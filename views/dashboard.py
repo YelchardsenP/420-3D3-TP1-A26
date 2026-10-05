@@ -3,7 +3,7 @@
 import tkinter as tk
 
 from models.gestion_stocks import GestionStocks
-from observers.affichage_alertes import AffichageAlerte
+from observers.affichage_alertes import AffichageAlertes
 from observers.affichage_date_update import AffichageDateUpdate
 from observers.liste_titres import ListeTitres
 from observers.logger import Logger
@@ -25,34 +25,17 @@ class Dashboard(tk.Tk):
         self.title("Gestionnaire de Portfolio")
         self.resizable(False, False)
         
-        self.fenetre.option_add("*Font", POLICE)
+        self.option_add("*Font", POLICE)
         
         self._gestion_stocks = gestion_stocks
+
+        self._creer_widgets()
         
         self._creer_observateurs()
         self._abonner_observateurs()
         
-        self._creer_widgets()
+        
 
-    
-    def _creer_observateurs(self):
-        # Initiation des observateurs
-        self._affichage_alerte = AffichageAlerte(self)
-        self._affichage_date_update = AffichageDateUpdate(self)
-        self._liste_titres = ListeTitres(self)
-        self._logger = Logger(self)
-        self._prix_live = PrixLive(self)
-        self._valeur_totale = ValeurTotale(self)
-    
-    def _abonner_observateurs(self):
-        # Abonnement des observateurs au sujet
-        self._gestion_stocks.abonner(self._affichage_alerte)
-        self._gestion_stocks.abonner(self._affichage_date_update)
-        self._gestion_stocks.abonner(self._liste_titres)
-        self._gestion_stocks.abonner(self._logger)
-        self._gestion_stocks.abonner(self._prix_live)
-        self._gestion_stocks.abonner(self._valeur_totale)
-    
     def _creer_widgets(self):
         # Création des widgets de l'interface
         
@@ -64,7 +47,7 @@ class Dashboard(tk.Tk):
         #========================
 
 
-        tk.Label(self.fenetre, text="Portfolio Tracker", font=POLICE_TITRE).pack(pady=10)
+        tk.Label(self, text="Portfolio Tracker", font=POLICE_TITRE).pack(pady=10)
 
         #========================
         # Creation des frames
@@ -90,24 +73,117 @@ class Dashboard(tk.Tk):
         # Contenu de Frame pour le prix en temps réel
         #========================
 
-
+        #Fait dans le fichier prix_live.py
 
 
         #========================
         # Contenu de Frame pour la gestion des titres
         #========================
 
+        # Champs pour ajouter un titre
+        self.entry_ticker = tk.Entry(self.frame_gestion, width=10)
+        self.entry_ticker.pack(anchor="w")
+
+        self.entry_quantite = tk.Entry(self.frame_gestion, width=10)
+        self.entry_quantite.pack(anchor="w")
+
+        self.entry_seuil_bas = tk.Entry(self.frame_gestion, width=10)
+        self.entry_seuil_bas.pack(anchor="w")
+
+        self.entry_seuil_haut = tk.Entry(self.frame_gestion, width=10)
+        self.entry_seuil_haut.pack(anchor="w")
+
+        # Bouton ajouter
+        self.btn_ajouter = tk.Button(self.frame_gestion, text="Ajouter", command=self._action_ajouter)
+        self.btn_ajouter.pack(anchor="w", pady=5)
+
+        # Listbox des titres
+        self.listbox_titres = tk.Listbox(self.frame_gestion, height=5)
+        self.listbox_titres.pack(fill=tk.X)
+
+        # Bouton retirer
+        self.btn_retirer = tk.Button(self.frame_gestion, text="Retirer", command=self._action_retirer)
+        self.btn_retirer.pack(anchor="w", pady=5)
+
+        # Champs pour modifier
+        self.entry_nouvelle_quantite = tk.Entry(self.frame_gestion, width=10)
+        self.entry_nouvelle_quantite.pack(anchor="w")
+
+        self.entry_nouveau_seuil_bas = tk.Entry(self.frame_gestion, width=10)
+        self.entry_nouveau_seuil_bas.pack(anchor="w")
+
+        self.entry_nouveau_seuil_haut = tk.Entry(self.frame_gestion, width=10)
+        self.entry_nouveau_seuil_haut.pack(anchor="w")
+
+        # Bouton modifier
+        self.btn_modifier = tk.Button(self.frame_gestion, text="Modifier", command=self._action_modifier)
+        self.btn_modifier.pack(anchor="w", pady=5)
+
+
         #========================
         # Contenu de  Frame pour la valeur du portfolio
         #========================
+
+        # Fait dans le fichier valeur_total.py
+
 
         #========================
         # Contenu de Frame pour les alertes
         #========================
 
+        # Fait dans le fichier affichage_alertes.py
+
         #========================
         # Contenu de Frame pour la date de mise à jour
         #========================
+
+        # Fait dans le fichier affichage_date_update.py    
+
+    
+    def _creer_observateurs(self):
+        # Initiation des observateurs
+        self._affichage_alerte = AffichageAlertes(self.frame_alertes)
+        self._affichage_date_update = AffichageDateUpdate(self.frame_date)
+        self._liste_titres = ListeTitres(self.frame_gestion)
+        self._logger = Logger(self)
+        self._prix_live = PrixLive(self.frame_prix)
+        self._valeur_totale = ValeurTotale(self.frame_portfolio)
+    
+    def _abonner_observateurs(self):
+        # Abonnement des observateurs au sujet
+        self._gestion_stocks.abonner(self._affichage_alerte)
+        self._gestion_stocks.abonner(self._affichage_date_update)
+        self._gestion_stocks.abonner(self._liste_titres)
+        self._gestion_stocks.abonner(self._logger)
+        self._gestion_stocks.abonner(self._prix_live)
+        self._gestion_stocks.abonner(self._valeur_totale)
+
+
+    #Fonction des bouttons
+
+    def _action_ajouter(self):
+        ticker = self.entry_ticker.get()
+        quantite = self.entry_quantite.get()
+        seuil_bas = self.entry_seuil_bas.get()
+        seuil_haut = self.entry_seuil_haut.get()
+
+        self._gestion_stocks.ajouter_titre(ticker, quantite, seuil_bas, seuil_haut)
+
+    def _action_retirer(self):
+        ticker = self._liste_titres.get_selection()
+        self._gestion_stocks.retirer_titre(ticker)
+
+    def _action_modifier(self):
+        ticker = self._liste_titres.get_selection()
+        quantite = self.entry_nouvelle_quantite.get()
+        seuil_bas = self.entry_nouveau_seuil_bas.get()
+        seuil_haut = self.entry_nouveau_seuil_haut.get()
+
+        self._gestion_stocks.modifier_titre(ticker, quantite, seuil_bas, seuil_haut)
+
+
+    
+
 
 
 
