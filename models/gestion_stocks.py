@@ -1,7 +1,10 @@
-from subject import Sujet
+import datetime
+
+from models.subject import Sujet
 import yfinance as yf
 
 class GestionStocks(Sujet):
+    
     
     def __init__(self):
         super().__init__()
@@ -123,15 +126,47 @@ class GestionStocks(Sujet):
         self.notifier()
 
 
-    def rafraichir_prix(self):
+    def rafraichir(self):
+        # 1. Récupérer les prix actuels
+        self.prix_actuels = {}
 
-        # Récupération des prix actuels pour tous les titres
-        self.prix_actuels = {
-            ticker: self._recuperer_prix(ticker)
-            for ticker in self.titres
-        }
+        for ticker, infos in self.titres.items():
+            info = yf.Ticker(ticker).fast_info
+            prix = info["last_price"]
+            ouverture = info["open"]
+            self.prix_actuels[ticker] = (prix, ouverture)
+
+        # 2. Calculer la valeur totale et la variation
+        self.valeur_totale = sum(
+            self.prix_actuels[t][0] * self.titres[t]["quantite"]
+            for t in self.titres
+        )
+
+        self.valeur_ouverture = sum(
+            self.prix_actuels[t][1] * self.titres[t]["quantite"]
+            for t in self.titres
+        )
+
+        self.variation_portfolio = self.valeur_totale - self.valeur_ouverture
+
+        # 3. Calculer les alertes
+        self.alertes = []
+        for ticker, (prix, _) in self.prix_actuels.items():
+            seuil_haut = self.titres[ticker]["seuil_haut"]
+            seuil_bas = self.titres[ticker]["seuil_bas"]
+
+            if prix >= seuil_haut:
+                self.alertes.append(f"{ticker} dépasse le seuil haut ({prix:.2f} ≥ {seuil_haut:.2f})")
+            elif prix <= seuil_bas:
+                self.alertes.append(f"{ticker} sous le seuil bas ({prix:.2f} ≤ {seuil_bas:.2f})")
+
+        # 4. Date de mise à jour
+        self._derniere_maj = datetime.datetime.now()
+
+        # 5. Notifier les observers
         self.notifier()
 
+            
 
     def get_donnees(self):
 

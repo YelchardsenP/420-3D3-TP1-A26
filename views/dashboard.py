@@ -33,6 +33,8 @@ class Dashboard(tk.Tk):
         
         self._creer_observateurs()
         self._abonner_observateurs()
+
+        self._cycle_actualisation()  # Démarrer le cycle d'actualisation
         
         
 
@@ -145,7 +147,7 @@ class Dashboard(tk.Tk):
         self._affichage_alerte = AffichageAlertes(self.frame_alertes)
         self._affichage_date_update = AffichageDateUpdate(self.frame_date)
         self._liste_titres = ListeTitres(self.frame_gestion)
-        self._logger = Logger(self)
+        self._logger = Logger("portfolio.csv")
         self._prix_live = PrixLive(self.frame_prix)
         self._valeur_totale = ValeurTotale(self.frame_portfolio)
     
@@ -180,6 +182,11 @@ class Dashboard(tk.Tk):
         seuil_haut = self.entry_nouveau_seuil_haut.get()
 
         self._gestion_stocks.modifier_titre(ticker, quantite, seuil_bas, seuil_haut)
+
+    # Methode pour le cycle d'actualisation
+    def _cycle_actualisation(self):
+        self._gestion_stocks.rafraichir()
+        self.after(self.INTERVALLE_ACTUALISATION, self._cycle_actualisation)
 
 
     

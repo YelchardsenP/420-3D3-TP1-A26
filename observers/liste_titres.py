@@ -19,7 +19,7 @@ class ListeTitres(Observateur):
     def actualiser(self, sujet) -> None:
         self._listbox.delete(0, tk.END)
 
-        for ticker, infos in sujet._titres.items():
+        for ticker, infos in sujet.titres.items():
 
             texte = (
                 f"{ticker} — "

@@ -1,7 +1,7 @@
-from models.gestion_stocks import GestionStock
+from models.gestion_stocks import GestionStocks
 from views.dashboard import Dashboard
 
-gestionstock = GestionStock()
+gestionstock = GestionStocks()
 
 app = Dashboard(gestionstock)
 
