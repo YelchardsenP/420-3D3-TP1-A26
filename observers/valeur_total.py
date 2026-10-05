@@ -1,13 +1,15 @@
 import tkinter as tk
 from observers.observer import Observateur
 
+POLICE_VALEUR = ("Segoe UI", 13, "bold")
 
 class ValeurTotale(Observateur):
 
     def __init__(self, parent):
         self._label = tk.Label(
             parent,
-            text="Valeur totale : calcul en cours..."
+            text="Valeur totale : calcul en cours...",
+            font=POLICE_VALEUR,
         )
         self._label.pack()
 

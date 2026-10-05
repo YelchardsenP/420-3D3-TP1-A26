@@ -17,6 +17,7 @@ class GestionStocks(Sujet):
     def _ajouter_titres_initiaux(self):
         self.titres = {
             "AAPL": {"quantite": 10, "seuil_haut": 250, "seuil_bas": 150},
+            "GOOGL": {"quantite": 5,  "seuil_haut": 160.0, "seuil_bas": 120.0},
             "MSFT": {"quantite": 5, "seuil_haut": 500, "seuil_bas": 300}
         }
 

@@ -8,7 +8,8 @@ class AffichageDateUpdate(Observateur):
     def __init__(self, parent):
         self._label = tk.Label(
             parent,
-            text="Dernière mise à jour :"
+            text="Dernière mise à jour :",
+            fg="gray"
         )
 
         self._label.pack(pady=5)
