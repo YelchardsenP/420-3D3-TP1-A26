@@ -18,7 +18,7 @@ class GestionStocks(Sujet):
         self.titres = {
             "AAPL": {"quantite": 10, "seuil_haut": 250, "seuil_bas": 150},
             "GOOGL": {"quantite": 5,  "seuil_haut": 160.0, "seuil_bas": 120.0},
-            "MSFT": {"quantite": 5, "seuil_haut": 500, "seuil_bas": 300}
+            "MSFT": {"quantite": 8, "seuil_haut": 500, "seuil_bas": 300}
         }
 
     # Recuperation des prix
@@ -100,7 +100,7 @@ class GestionStocks(Sujet):
         # Suppression du titre et de ses prix
         del self.titres[ticker]
 
-        self.rafraichir()
+        
         self.notifier()
         
 
