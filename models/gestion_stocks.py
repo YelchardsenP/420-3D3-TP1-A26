@@ -23,14 +23,17 @@ class GestionStocks(Sujet):
 
     # Recuperation des prix
     def _recuperer_prix(self, ticker):
-        info = yf.Ticker(ticker).fast_info or {}
-        prix = info.get("last_price")
-        ouverture = info.get("open")
+        data = yf.Ticker(ticker)
+        hist = data.history(period="1d")
 
-        if prix is None:
-            raise ValueError(f"Le titre '{ticker}' n'existe pas.")
+        if hist.empty:
+            raise ValueError(f"Impossible de récupérer le prix pour '{ticker}'. Réessayez.")
+
+        prix = float(hist["Close"].iloc[-1])
+        ouverture = float(hist["Open"].iloc[-1])
 
         return prix, ouverture
+
 
     # Methodes privées pour modifer texte en entier ou flottant positif
     def _entier_positif(self, texte):
@@ -82,7 +85,7 @@ class GestionStocks(Sujet):
             "seuil_bas": round(seuil_bas if seuil_bas else prix * 0.8, 2),
         }
         
-
+        self.rafraichir()
         self.notifier()
 
 
@@ -96,7 +99,8 @@ class GestionStocks(Sujet):
 
         # Suppression du titre et de ses prix
         del self.titres[ticker]
-        
+
+        self.rafraichir()
         self.notifier()
         
 
@@ -124,6 +128,7 @@ class GestionStocks(Sujet):
         if titre_info["seuil_bas"] >= titre_info["seuil_haut"]:
             raise ValueError("Le seuil bas doit être inférieur au seuil haut.")
 
+        self.rafraichir()
         self.notifier()
 
 
@@ -132,10 +137,16 @@ class GestionStocks(Sujet):
         self.prix_actuels = {}
 
         for ticker, infos in self.titres.items():
-            info = yf.Ticker(ticker).fast_info
-            prix = info["last_price"]
-            ouverture = info["open"]
+            hist = yf.Ticker(ticker).history(period="1d")
+
+            if hist.empty:
+                continue
+
+            prix = float(hist["Close"].iloc[-1])
+            ouverture = float(hist["Open"].iloc[-1])
+
             self.prix_actuels[ticker] = (prix, ouverture)
+
 
         # 2. Calculer la valeur totale et la variation
         self.valeur_totale = sum(
