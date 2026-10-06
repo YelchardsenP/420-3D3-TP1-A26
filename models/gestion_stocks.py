@@ -100,7 +100,7 @@ class GestionStocks(Sujet):
         # Suppression du titre et de ses prix
         del self.titres[ticker]
 
-        
+        self.rafraichir()
         self.notifier()
         
 
